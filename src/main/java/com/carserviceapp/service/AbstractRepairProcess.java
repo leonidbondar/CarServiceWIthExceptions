@@ -1,12 +1,15 @@
 package com.carserviceapp.service;
 
 import com.carserviceapp.model.ServiceRequest;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Abstract class defining a template method for a car repair process.
  * (Template Method Design Pattern)
  */
 public abstract class AbstractRepairProcess {
+    private static final Logger logger = LogManager.getLogger(AbstractRepairProcess.class);
 
     /**
      * The template method that defines the skeleton of the repair process.
@@ -14,7 +17,7 @@ public abstract class AbstractRepairProcess {
      * @param request The ServiceRequest to execute the repair process on.
      */
     public final void executeRepair(ServiceRequest request) {
-        System.out.println("Initiating repair process for Service Request " + request.getId() + "...");
+        logger.info("Initiating repair process for Service Request {}...", request.getId());
         request.setStatus(ServiceRequest.Status.IN_PROGRESS);
 
         diagnose(request);
@@ -23,7 +26,7 @@ public abstract class AbstractRepairProcess {
         qualityCheck(request);
 
         request.setStatus(ServiceRequest.Status.COMPLETED);
-        System.out.println("Repair process for Service Request " + request.getId() + " completed.");
+        logger.info("Repair process for Service Request {} completed.", request.getId());
     }
 
     protected abstract void diagnose(ServiceRequest request);

@@ -6,7 +6,7 @@ import java.util.Objects;
  * Abstract base class for employees.
  */
 public abstract class Employee extends AbstractPerson {
-    protected String employeeId; // Redundant, but kept if distinct ID series for employees is needed
+    protected String employeeId;
     protected double salary;
 
     public Employee(String idPrefix, String firstName, String lastName, String email, String phone, double salary) {

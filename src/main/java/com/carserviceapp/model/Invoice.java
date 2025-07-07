@@ -1,6 +1,8 @@
 package com.carserviceapp.model;
 
 import com.carserviceapp.interfaces.Displayable;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.time.LocalDate;
 import java.util.Objects;
@@ -9,6 +11,8 @@ import java.util.Objects;
  * Represents an invoice for a completed service request.
  */
 public class Invoice extends AbstractTransaction implements Displayable {
+    private static final Logger logger = LogManager.getLogger(Invoice.class);
+
     private ServiceRequest serviceRequest;
     private LocalDate issueDate;
     private LocalDate dueDate;
@@ -20,6 +24,7 @@ public class Invoice extends AbstractTransaction implements Displayable {
         this.issueDate = LocalDate.now();
         this.dueDate = issueDate.plusDays(30); // Default 30 days due
         this.isPaid = false;
+        logger.info("Invoice created: {} for service request {} with total amount ${}", getTransactionId(), serviceRequest.getId(), getAmount());
     }
 
     public ServiceRequest getServiceRequest() {
@@ -80,10 +85,10 @@ public class Invoice extends AbstractTransaction implements Displayable {
     // Method to simulate processing the invoice after payment
     public void processTransaction() {
         if (isPaid) {
-            System.out.println("Invoice " + getTransactionId() + " has been processed and marked as paid.");
+            logger.info("Invoice {} has been processed and marked as paid.", getTransactionId());
             // Additional logic like sending confirmation, updating financial records, etc.
         } else {
-            System.out.println("Invoice " + getTransactionId() + " is still unpaid. Cannot fully process yet.");
+            logger.warn("Invoice {} is still unpaid. Cannot fully process yet.", getTransactionId());
         }
     }
 

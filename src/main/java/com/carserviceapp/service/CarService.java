@@ -1,48 +1,51 @@
 package com.carserviceapp.service;
 
+import com.carserviceapp.ServiceManager;
 import com.carserviceapp.exceptions.*;
-import com.carserviceapp.model.Car;
-import com.carserviceapp.model.Customer;
-import com.carserviceapp.model.ServiceRequest;
+import com.carserviceapp.model.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Core operations: manage cars and service requests.
+ * Now delegates to ServiceManager for full domain logic.
  */
 public class CarService {
     private static final Logger log = LogManager.getLogger(CarService.class);
 
-    // vehicles by licensePlate
-    private final Map<String, Car> vehicles = new HashMap<>();
-    // all requests by ID
-    private final Map<String, ServiceRequest> requests = new HashMap<>();
+    private final ServiceManager serviceManager = new ServiceManager();
 
     public void addCar(String make,
                        String model,
                        int year,
                        String licensePlate,
                        String vin) {
-        if (vehicles.containsKey(licensePlate)) {
+        // Delegate vehicle creation + addition to ServiceManager
+        if (serviceManager.getVehicles().values().stream()
+                .anyMatch(v -> licensePlate.equalsIgnoreCase(v.getLicensePlate()))) {
             throw new DuplicateVehicleException(licensePlate);
         }
-        Car car = new Car(make, model, year, licensePlate, vin);
-        vehicles.put(licensePlate, car);
+        AbstractVehicle car = serviceManager.createCar(make, model, year, licensePlate, vin);
+        serviceManager.addVehicle(car, null); // null owner, or extend to accept owner param
         log.info("Added car: {}", car);
     }
 
     public void removeCar(String licensePlate) {
-        Car removed = vehicles.remove(licensePlate);
-        if (removed == null) {
+        AbstractVehicle vehicle = serviceManager.getVehicles().values().stream()
+                .filter(v -> licensePlate.equalsIgnoreCase(v.getLicensePlate()))
+                .findFirst()
+                .orElse(null);
+        if (vehicle == null) {
             throw new VehicleNotFoundException(licensePlate);
         }
-        // remove all associated requests
-        removed.getServiceHistory()
-                .forEach(req -> requests.remove(req.getRequestId()));
-        log.info("Removed car: {}", removed);
+        serviceManager.getVehicles().remove(vehicle.getId());
+        // Also remove associated requests from ServiceManager's requests map
+        serviceManager.getServiceRequests().values().removeIf(req -> req.getVehicle().equals(vehicle));
+        log.info("Removed car: {}", vehicle);
     }
 
     public ServiceRequest createServiceRequest(Customer customer,
@@ -59,51 +62,47 @@ public class CarService {
             throw new InvalidServiceRequestException("empty problem description");
         }
 
-        Car car = vehicles.get(licensePlate);
-        if (car == null) {
-            throw new VehicleNotFoundException(licensePlate);
-        }
+        AbstractVehicle vehicle = serviceManager.getVehicles().values().stream()
+                .filter(v -> licensePlate.equalsIgnoreCase(v.getLicensePlate()))
+                .findFirst()
+                .orElseThrow(() -> new VehicleNotFoundException(licensePlate));
 
-        ServiceRequest req = new ServiceRequest(customer, car, date, problemDesc);
-        String id = req.getRequestId();
-        if (requests.containsKey(id)) {
-            throw new DuplicateServiceRequestException(id);
-        }
-        requests.put(id, req);
-        car.addServiceRequest(req);
-        log.info("Created service request {} for {}", id, licensePlate);
+        ServiceRequest req = serviceManager.createServiceRequest(customer, vehicle, problemDesc);
+        log.info("Created service request {} for {}", req.getId(), licensePlate);
         return req;
     }
 
     public List<ServiceRequest> listServiceRequests(String licensePlate) {
-        Car car = vehicles.get(licensePlate);
-        if (car == null) {
-            throw new VehicleNotFoundException(licensePlate);
-        }
-        return car.getServiceHistory();
+        AbstractVehicle vehicle = serviceManager.getVehicles().values().stream()
+                .filter(v -> licensePlate.equalsIgnoreCase(v.getLicensePlate()))
+                .findFirst()
+                .orElseThrow(() -> new VehicleNotFoundException(licensePlate));
+
+        return serviceManager.getServiceRequests().values().stream()
+                .filter(req -> req.getVehicle().equals(vehicle))
+                .toList();
     }
 
     public void updateServiceRequestStatus(String requestId,
                                            ServiceRequest.Status newStatus) {
-        ServiceRequest req = requests.get(requestId);
+        ServiceRequest req = serviceManager.getServiceRequests().get(requestId);
         if (req == null) {
             throw new ServiceRequestNotFoundException(requestId);
         }
-        req.setStatus(newStatus);
+        serviceManager.updateServiceRequestStatus(requestId, newStatus);
         log.info("Request {} status updated to {}", requestId, newStatus);
     }
 
     public void removeServiceRequest(String requestId) {
-        ServiceRequest req = requests.remove(requestId);
+        ServiceRequest req = serviceManager.getServiceRequests().remove(requestId);
         if (req == null) {
             throw new ServiceRequestNotFoundException(requestId);
         }
-        // ← now works on AbstractVehicle
         req.getVehicle().removeServiceRequest(req);
         log.info("Removed service request {}", requestId);
     }
 
-    public Collection<Car> listAllCars() {
-        return Collections.unmodifiableCollection(vehicles.values());
+    public Collection<AbstractVehicle> listAllCars() {
+        return serviceManager.getVehicles().values();
     }
 }

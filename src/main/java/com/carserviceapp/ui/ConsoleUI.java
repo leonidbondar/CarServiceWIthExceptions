@@ -3,20 +3,19 @@ package com.carserviceapp.ui;
 import com.carserviceapp.model.Customer;
 import com.carserviceapp.model.ServiceRequest;
 import com.carserviceapp.service.CarService;
+import com.carserviceapp.util.InputValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
-import java.util.Scanner;
 
 /**
  * All Scanner I/O here; delegates to CarService.
  */
 public class ConsoleUI {
     private static final Logger log = LogManager.getLogger(ConsoleUI.class);
-    private final Scanner scanner = new Scanner(System.in);
     private final CarService svc = new CarService();
 
     public void run() {
@@ -24,7 +23,7 @@ public class ConsoleUI {
         boolean exit = false;
         while (!exit) {
             showMenu();
-            switch (readInt("Option: ")) {
+            switch (InputValidator.getPositiveIntegerInput("Option: ")) {
                 case 1 -> addCar();
                 case 2 -> removeCar();
                 case 3 -> createRequest();
@@ -36,6 +35,7 @@ public class ConsoleUI {
                 default -> log.warn("Unknown option");
             }
         }
+        InputValidator.closeScanner();
         log.info("=== Goodbye ===");
     }
 
@@ -54,11 +54,11 @@ public class ConsoleUI {
 
     private void addCar() {
         try {
-            String make  = readString("Make: ");
-            String model = readString("Model: ");
-            int year     = readInt("Year: ");
-            String plate = readString("License Plate: ");
-            String vin   = readString("VIN: ");
+            String make  = InputValidator.getStringInput("Make: ");
+            String model = InputValidator.getStringInput("Model: ");
+            int year     = InputValidator.getPositiveIntegerInput("Year: ");
+            String plate = InputValidator.getStringInput("License Plate: ");
+            String vin   = InputValidator.getStringInput("VIN: ");
             svc.addCar(make, model, year, plate, vin);
         } catch (RuntimeException e) {
             log.error(e.getMessage());
@@ -67,7 +67,8 @@ public class ConsoleUI {
 
     private void removeCar() {
         try {
-            svc.removeCar(readString("License Plate: "));
+            String plate = InputValidator.getStringInput("License Plate: ");
+            svc.removeCar(plate);
         } catch (RuntimeException e) {
             log.error(e.getMessage());
         }
@@ -75,17 +76,17 @@ public class ConsoleUI {
 
     private void createRequest() {
         try {
-            String fn    = readString("Customer first name: ");
-            String ln    = readString("Customer last name: ");
-            String email = readString("Customer email: ");
-            String phone = readString("Customer phone: ");
+            String fn    = InputValidator.getStringInput("Customer first name: ");
+            String ln    = InputValidator.getStringInput("Customer last name: ");
+            String email = InputValidator.getStringInput("Customer email: ");
+            String phone = InputValidator.getStringInput("Customer phone: ");
             Customer cust= new Customer(fn, ln, email, phone);
 
-            String plate = readString("License Plate: ");
+            String plate = InputValidator.getStringInput("License Plate: ");
             LocalDate date = LocalDate.parse(
-                    readString("Request Date (YYYY-MM-DD): ")
+                    InputValidator.getStringInput("Request Date (YYYY-MM-DD): ")
             );
-            String problem = readString("Problem description: ");
+            String problem = InputValidator.getStringInput("Problem description: ");
             svc.createServiceRequest(cust, plate, date, problem);
         } catch (RuntimeException e) {
             log.error(e.getMessage());
@@ -103,7 +104,7 @@ public class ConsoleUI {
 
     private void listRequests() {
         try {
-            String plate = readString("License Plate: ");
+            String plate = InputValidator.getStringInput("License Plate: ");
             List<ServiceRequest> reqs = svc.listServiceRequests(plate);
             if (reqs.isEmpty()) {
                 log.info("No requests for {}", plate);
@@ -117,12 +118,9 @@ public class ConsoleUI {
 
     private void updateRequestStatus() {
         try {
-            String id = readString("Request ID: ");
-            String st = readString(
-                    "New status (PENDING|IN_PROGRESS|COMPLETED|CANCELLED): "
-            );
-            svc.updateServiceRequestStatus(id,
-                    ServiceRequest.Status.valueOf(st));
+            String id = InputValidator.getStringInput("Request ID: ");
+            String st = InputValidator.getStringInput("New status (PENDING|IN_PROGRESS|COMPLETED|CANCELLED): ");
+            svc.updateServiceRequestStatus(id, ServiceRequest.Status.valueOf(st));
         } catch (RuntimeException e) {
             log.error(e.getMessage());
         }
@@ -130,24 +128,10 @@ public class ConsoleUI {
 
     private void removeRequest() {
         try {
-            svc.removeServiceRequest(readString("Request ID: "));
+            String id = InputValidator.getStringInput("Request ID: ");
+            svc.removeServiceRequest(id);
         } catch (RuntimeException e) {
             log.error(e.getMessage());
-        }
-    }
-
-    private String readString(String prompt) {
-        log.info(prompt);
-        return scanner.nextLine().trim();
-    }
-    private int readInt(String prompt) {
-        while (true) {
-            try {
-                log.info(prompt);
-                return Integer.parseInt(scanner.nextLine().trim());
-            } catch (NumberFormatException e) {
-                log.error("Please enter a valid integer.");
-            }
         }
     }
 }

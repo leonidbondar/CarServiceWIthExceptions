@@ -7,11 +7,9 @@ import java.util.Objects;
  */
 public class Customer extends AbstractPerson {
     // Customer specific attributes can be added here if needed
-    // private List<AbstractVehicle> vehiclesOwned; // Handled by ServiceManager for now
 
     public Customer(String firstName, String lastName, String email, String phone) {
         super("CUST", firstName, lastName, email, phone);
-        // this.vehiclesOwned = new ArrayList<>(); // Initialize if managed here
     }
 
     public String getCustomerId() {
